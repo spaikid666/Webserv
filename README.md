@@ -1,2 +1,9 @@
-# Webserv
-Repository dedicated to the project Webserv from school 42
+*This project has been created as part of the 42 curriculum by ulfernan & asalguer*
+
+**Description**
+
+
+**Instructions**
+
+
+**Resources**
