@@ -1,0 +1,51 @@
+----------------------------------------- CONFIGURATION FILE -----------------------------------------
+The template configuration file (template.conf) which was used to make the test configuration file (test.conf),
+was extracted from the official webpage from NGINX:
+https://docs.nginx.com/nginx/admin-guide/basic-functionality/managing-configuration-files/
+
+We must handle correctly the parsing progress to be able to locate and store every valuable
+peace of information.
+
+There are also 2 more configuration files, the 'MVP' file and the 'extended'. The MVP contains all the essential
+settings to make the server run, whereas the 'extended' one has all the configurations needed for the project.
+
+
+---------------- Config File Functionalities ----------------
+### Global Server Setting:
+	- server { ... } block: This defines a "Virtual Server." In HTTP/1.1, a single physical machine can host multiple websites. 
+	Your server will read the Host header in the HTTP request to determine which server block should process the request.
+
+	- listen: Specifies the port the server will listen on for incoming TCP connections (e.g., 8080).
+
+	- host: Specifies the IP address to bind to. 127.0.0.1 means it only accepts connections from the local machine. 
+	0.0.0.0 means it accepts connections from any network interface. 
+	(Note: Standard NGINX often combines this into listen 127.0.0.1:8080;, but keeping them separate in webserv makes parsing easier).
+
+	- server_name: Defines the domain names associated with this server block. If a request comes in on port 8080
+	with the header Host: example.com, the server matches it to the block containing server_name example.com.
+
+	- client_max_body_size: Crucial for security and subject requirements. It sets the maximum allowed size of the client
+	request body (usually for POST requests). If the Content-Length header in a request exceeds this size,
+	your server should immediately respond with a 413 Payload Too Large error.
+
+	- error_page: Defines a custom HTML file to serve when a specific HTTP error occurs. For instance, error_page 404 /404.html;
+	tells your server to read and return the 404.html file instead of a hardcoded string when a resource is not found.
+
+
+### Directory & Routing Settings:
+	- root: Defines the base directory for requests. If root /var/www/html; is set, a request to http://localhost:8080/style.css 
+	will cause your server to look for the file at /var/www/html/style.css on your hard drive.
+
+	- index: Specifies the default file to serve if the client requests a directory. If the request is for /, the server 
+	appends the index file, turning the internal request into /index.html.
+
+	- location <path> { ... } block: Defines how to process requests matching a specific URI pattern. Your server must find 
+	the most specific location match for the incoming URI.
+
+
+### Location Block:
+	- 
+
+	- 
+
+	- 
