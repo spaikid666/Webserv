@@ -1,0 +1,277 @@
+  ////////////////////////////////////////////////////////////////////////////////////////////////////////
+ /////////////////////////////////////////// GENERAL GUIDELINE //////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+_____________________________________________
+*** STEP 1: Project Skeleton & Utilities ***
+_____________________________________________
+
+Before writing server logic, set up the physical environment and utility functions.
+
+[DONE]	1. Directory Structure: Create inc/ (headers/.ipp/.tpp files), src/ (C++ implementation), 
+		config/ (.conf files), and www/ (document root containing site1, cgi-bin, uploads, and error_pages).
+
+[TO DO] 2. Allowed Functions Wrappers: Create safe wrappers for system calls that check errno
+		and use strerror(errno) for logging.
+
+[IN PROGRESS]	3. String/File Utils: Implement custom functions to split strings, trim whitespace,
+				and convert types (since C++98 lacks modern string utils).
+
+
+_______________________________________________________
+*** STEP 2: The Configuration Parser (ConfigParser) ***
+_______________________________________________________
+
+Your server cannot start without a validated blueprint. This must be the first major feature you build.
+
+[DONE]	1. File Reading: Open the .conf file using standard C++ streams.
+
+[IN PROGRESS]	2. Tokenization & Syntax: Parse the file into a list of ServerConfig objects.
+				Throw exceptions for bad syntax immediately.
+
+[IN PROGRESS]	3. ServerConfig Population:
+
+        	[IN PROGRESS] 3.1. listen: Parse IP and Port. Validate IP with inet_pton(AF_INET, ...). Restrict ports to 8000-9000.
+
+        	[DONE] 3.2. server_name: Store the virtual host string.
+
+        	[DONE] 3.3. error_page: Map integer status codes to string paths.
+
+        	[DONE] 3.4. client_max_body_size: Convert to an integer representing bytes.
+
+        	[DONE] 3.5. root and index: Store default paths.
+
+[IN PROGRESS]	4. LocationConfig Population: For each location /path block inside a server,
+				store: methods (validate against GET/POST/DELETE), root, autoindex (on/off),
+				upload_enable, upload_path, cgi_ext, and cgi_pass.
+
+
+
+__________________________________________________
+*** STEP 3: Server Initialization & Validation ***
+__________________________________________________
+
+
+Before opening sockets, ensure the configuration matches reality.
+
+    Path Validation: Use access() and stat() to verify that the root directories and custom error_page files actually exist.
+
+    Permissions: Ensure directories have read permissions for serving and write permissions for upload_path.
+
+    Fail Fast: If a directory is missing, log a critical error and exit. Do not auto-create folders (except potentially the upload folder).
+
+
+
+_________________________________________________
+*** STEP 4: Socket Wrapper Setup (Networking) ***
+_________________________________________________
+
+Abstract the C socket API into object-oriented classes (Socket, ListeningSocket).
+
+    Creation: Call socket(AF_INET, SOCK_STREAM, 0) for each unique ip:port pair in your ServerConfig.
+
+    Non-Blocking: Immediately call fcntl(fd, F_SETFL, O_NONBLOCK) on every socket.
+
+    Address Binding: Populate the sockaddr_in struct. Use htons() for the port and htonl() for the IP. Call bind(). Catch "Port already in use" errors and exit.
+
+    Listening: Call listen(fd, backlog) to mark the socket as passive.
+
+
+
+_________________________________________________________
+*** STEP 5: The I/O Multiplexing Engine (PollManager) ***
+_________________________________________________________
+
+This is the core loop that replaces threading.
+
+    pollfd Array: Create an array of pollfd structs. Insert all your listening sockets with the event POLLIN.
+
+    The Infinite Loop: Call poll(). The server sleeps here until the OS wakes it up.
+
+    Event Routing: Iterate through the pollfd array. Check the revents field to see why poll() woke up (is it POLLIN, POLLOUT, or POLLERR?).
+
+
+
+__________________________________________________
+*** STEP 6: Connection Management (Connection) ***
+__________________________________________________
+
+Handle the raw connection lifecycle when poll() detects activity.
+
+    Accepting Clients: If a listening socket has POLLIN, call accept(). The OS assigns a random ephemeral port to the client. Set this new file descriptor to non-blocking and add it to the pollfd array with POLLIN.
+
+    Reading Data: If a client socket has POLLIN, call recv().
+
+        If recv() == 0: Client disconnected. Close the socket and remove it from pollfd.
+
+        If recv() < 0 and errno == EAGAIN: Buffer is empty, do nothing.
+
+        If recv() > 0: Append the raw bytes to a buffer inside a ClientContext object mapped to this socket.
+
+
+
+__________________________________________________
+*** STEP 7: HTTP Request Parsing (HTTPRequest) ***
+__________________________________________________
+
+Translate the raw buffer from Step 6 into a structured object based on RFC 7230/7231.
+
+    Request Line: Extract Method, URI, and Version. Validation: If the URI length > 255 bytes, trigger a 414 URI Too Long error.
+
+    Headers: Parse Key: Value\r\n until you hit \r\n\r\n. Store in a case-insensitive map.
+
+    Expect 100-Continue: If Expect: 100-continue is present, immediately enqueue a 100 Continue HTTP response to let the client know it can send the body.
+
+    Body Reading:
+
+        If Content-Length: Read exactly N bytes. If it exceeds client_max_body_size, trigger 413 Payload Too Large.
+
+        If Transfer-Encoding: chunked: Parse the hex length (<hex>\r\n), read the data, and repeat until the chunk size is 0. Remove the chunk formatting to store clean data.
+
+
+
+________________________________________
+*** STEP 8: Routing & Security Rules ***
+________________________________________
+
+Connect the parsed HTTPRequest to the ServerConfig and LocationConfig.
+
+    Host Matching: Use the Host header to determine which ServerConfig applies (handling virtual hosts).
+
+    Path Traversal Check: Reject any URI containing ../ with 403 Forbidden.
+
+    Location Matching: Find the most specific LocationConfig for the URI.
+
+    Method Check: Verify the requested method is in allow_methods. If not, trigger 405 Method Not Allowed and include the Allow header in the response.
+
+
+
+_______________________________________________
+*** STEP 9: Static Files & Uploads (Router) ***
+_______________________________________________
+
+Handle standard GET, POST, and DELETE requests.
+
+    GET (Files): Use stat(). If it's a file, open in binary mode (std::ios::binary) and prepare to read.
+
+    GET (Directories): If no trailing slash, return 301 Moved Permanently. If slash exists, check for the index file. If missing and autoindex is on, generate an HTML directory listing. If autoindex is off, return 403.
+
+    POST (Uploads): Check for multipart/form-data. Extract the boundary string. Split the body by the boundary. Extract the filename, sanitize it, and use write() to save the exact binary bytes to upload_path. Return 201 Created.
+
+    DELETE: Use stat() to verify existence. Use unlink() to delete. Return 204 No Content.
+
+
+
+
+_______________________________________________
+*** STEP 10: Dynamic Execution (CGIHandler) ***
+_______________________________________________
+
+Handle requests targeting files matching cgi_ext.
+
+    Environment Preparation: Build the char* envp[] array. Map REQUEST_METHOD, QUERY_STRING, CONTENT_LENGTH, CONTENT_TYPE, SCRIPT_NAME, SERVER_PROTOCOL, etc.
+
+    Piping: Use pipe() to create standard input and output channels.
+
+    Process Forking:
+
+        Call fork().
+
+        In Child: Use dup2() to connect the pipes to STDIN_FILENO and STDOUT_FILENO. Use execve(cgi_pass, args, envp).
+
+        In Parent: Write the HTTP body to the write-end of the pipe. Read the CGI output from the read-end of the pipe.
+
+        Note: Use waitpid() carefully (or rely on poll) to ensure the CGI process finishes without hanging your server.
+
+        Windows formatting issue: Be aware of \r errors in scripts if your peers test on Windows; use sed to fix line endings if necessary.
+
+
+
+______________________________________________________
+*** STEP 11: HTTP Response Building (HTTPResponse) ***
+______________________________________________________
+
+Format the outcome of Steps 9 or 10 into an HTTP-compliant string.
+
+    Status Line: HTTP/1.1 <Code> <Message>\r\n.
+
+    Headers: Generate Server, Date (UTC), Content-Type (map extensions to MIME types), and Content-Length.
+
+    Keep-Alive Logic: Check the request's Connection header. Set your response Connection header to keep-alive or close.
+
+    Writing to Socket (POLLOUT): Once the string is built, your server waits for poll() to flag POLLOUT for this client. Use send(). If send() cannot push the whole string at once (because it's non-blocking), save the remaining offset and send the rest on the next poll() loop.
+
+    Cleanup: If the connection was close, call close(fd) and remove from pollfd. If keep-alive, clear the ClientContext buffer to ready it for the next request.
+
+
+
+
+___________________________________________
+*** STEP 12: Session Management (Bonus) ***
+___________________________________________
+
+Implement stateful tracking using Cookies.
+
+    SessionManager: Create an object holding a map of active sessions (SessionID -> SessionData). Include a cleanup mechanism for expired sessions.
+
+    Cookie Parsing: In HTTPRequest, parse the Cookie header to extract sessionId.
+
+    Middleware Logic:
+
+        If a valid session exists: Attach it to the ClientContext.
+
+        If no session exists: Call /dev/urandom to generate a 32-char hex string. Create a new session.
+
+    Response Injection: In HTTPResponse, if a new session was created, append Set-Cookie: sessionId=<id>; HttpOnly; Path=/; Max-Age=3600.
+
+
+
+____________________________________________
+*** STEP 13: Error Handling & Resilience ***
+____________________________________________
+
+Act as the safety net for the entire architecture.
+
+    Default Error Pages: If a 4xx or 5xx error occurs (e.g., 404 Not Found, 500 Internal Server Error), check the ServerConfig for a custom HTML file. If none exists, hardcode a basic HTML string to return.
+
+    Timeouts: Implement a check inside your main poll() loop to drop clients (send 408 Request Timeout) if they haven't sent data in a set amount of time (e.g., 30 seconds).
+
+    No Stacktraces: Ensure 500 errors log to your server terminal but never send internal stack traces to the client browser.
+
+
+
+
+
+
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////// SPECIFIC GUIDELINE //////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+_____________________________________________
+*** STEP 1: Project Skeleton & Utilities ***
+_____________________________________________
+1. The general structure of the project is created and subject to changes depending on the demands of the
+project.
+
+2. Anyone were made yet because I didn't have the explicit necessity to do so, maybe later they are.
+
+3. As long as the project isn't finish we would need to create custom functions, so this step is going
+to be one of the last step to complete.
+
+
+_______________________________________________________
+*** STEP 2: The Configuration Parser (ConfigParser) ***
+_______________________________________________________
+1. The configuration file is checked previously before its opening, we check if the user has access to
+the file and can be opened, if the file exits and if it has content inside.
+
+2. We still have to parse the location part of the server configuration file.
+
+3. We have to make sure that the IP and port from the congfiguration file is valid.
+
+4. For this we have to create a class which uses vectors to properly store the location
+part of the server configuration.
+
+--> TO DO: Check line 124 from Parse.cpp, we also must parse correctly 'client_max_body_size'.

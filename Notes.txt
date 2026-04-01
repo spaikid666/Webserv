@@ -1,3 +1,42 @@
+  ////////////////////////////////////////////////////////////////////////////////////////////////////
+ /////////////////////////////////////// NOTES FROM THE CODE ////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+Compilation:
+./webserv [path of the configuration file]
+
+Ex:
+./webserv ./config/extended.conf
+
+
+At the beginning we check that the program takes only 2 arguments (the name of the program itselve and the
+path of the configuration file).
+
+We check that the configuration file exist, can be opened and has content inside.
+
+Then we create a vector of strings which is passed to getTokens, a functions that gets
+rid of of all the spaces and creates individual tokens for each word or symbol surround by spaces.
+
+Then we parse every token and place them in the correct place inside the paramethers that the server can have.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  ///////////////////////////////////////////////////////////////////////////////////////////////////////
+ /////////////////////////////////////// NOTES FROM THE PROJECT ////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
 ----------------------------------------- CONFIGURATION FILE -----------------------------------------
 The template configuration file (template.conf) which was used to make the test configuration file (test.conf),
 was extracted from the official webpage from NGINX:
@@ -49,3 +88,6 @@ settings to make the server run, whereas the 'extended' one has all the configur
 	- 
 
 	- 
+
+
+
