@@ -6,6 +6,7 @@ STD_FLAGS 				= -Wall -Wextra -Werror
 
 SRCS					= src/main.cpp\
                           src/Server.cpp\
+						  src/Location.cpp\
 						  utils/FileCheck.cpp\
 						  utils/Parse.cpp\
 

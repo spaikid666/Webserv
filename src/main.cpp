@@ -24,7 +24,10 @@ int main(int argc, char** argv)
 	if (servers.empty())
 		return 1;
 
-	std::cout << servers[0].getHost() << std::endl;
+	const std::vector<Location>& locations = servers[1].getLocations();
+	std::cout << locations[0].getAutoindex() << std::endl;
+	std::cout << locations[0].getPath() << std::endl;
+	std::cout << locations[0].getMaxBody() << std::endl;
 
 	return 0;
 }

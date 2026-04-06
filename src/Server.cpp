@@ -1,13 +1,16 @@
 #include "../include/mainHeader.hpp"
 
 Server::Server () {}
-Server::Server(const Server& other)
-	: _port(other.getPort()), _host(other.getHost()), _svrName(other.getServerName()),
-	  _maxBody(other.getMaxBody()), _errPage(other.getErrorPage()), 
-	  _root(other.getRoot()), _index(other.getIndex())
-	  //, _locations(other.getLocations()) 
-{
-}
+Server::Server(const Server& other): 
+	_port(other.getPort()),
+	_host(other.getHost()),
+	_svrName(other.getServerName()),
+	_maxBody(other.getMaxBody()),
+	_errPage(other.getErrorPage()),
+	_root(other.getRoot()),
+	_index(other.getIndex()),
+	_locations(other.getLocations())
+{}
 Server& Server::operator=(const Server& other)
 {
 	if (this != &other)
@@ -19,7 +22,7 @@ Server& Server::operator=(const Server& other)
 		_svrName = other.getServerName();
 		_root = other.getRoot();
 		_index = other.getIndex();
-		//_locations = other.getLocations();
+		_locations = other.getLocations();
 	}
 	return *this;
 }
@@ -70,12 +73,16 @@ void Server::setIndex(const std::string &index)
 	_index = index;
 }
 
+void Server::setLocation(const Location& location)
+{
+	_locations.push_back(location);
+}
 
 
 
 
 
-const std::string &Server::getPort(void) const
+const std::string& Server::getPort(void) const
 {
 	return _port;
 }
@@ -85,27 +92,32 @@ const std::string& Server::getHost() const
 	return _host;
 }
 
-const std::string &Server::getServerName(void) const
+const std::string& Server::getServerName(void) const
 {
 	return _svrName;
 }
 
-const long &Server::getMaxBody(void) const
+const long& Server::getMaxBody(void) const
 {
 	return _maxBody;
 }
 
-const std::string &Server::getErrorPage(void) const
+const std::string& Server::getErrorPage(void) const
 {
 	return _errPage;
 }
 
-const std::string &Server::getRoot(void) const
+const std::string& Server::getRoot(void) const
 {
 	return _root;
 }
 
-const std::string &Server::getIndex(void) const
+const std::string& Server::getIndex(void) const
 {
 	return _index;
+}
+
+const std::vector<Location>& Server::getLocations(void) const
+{
+	return _locations;
 }

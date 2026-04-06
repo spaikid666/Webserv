@@ -1,5 +1,15 @@
 #include "../include/mainHeader.hpp"
 
+static bool hasNextToken(const std::vector<std::string> &tokens, size_t i, const std::string &field)
+{
+	if (i + 1 >= tokens.size())
+	{
+		std::cerr << "[Error]: Missing value for '" << field << "'." << std::endl;
+		return FAIL;
+	}
+	return SUCCESS;
+}
+
 std::vector<std::string> getTokens(const std::string& filePath)
 {
 	std::vector<std::string> tokens;
@@ -83,10 +93,8 @@ std::vector<Server> parseTokens(const std::vector<std::string> &tokens)
 
 bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 {
-	while(*i < tokens.size())
+	while(*i < tokens.size() && tokens[*i] != "}")
 	{
-		if (tokens[*i] == "}")
-			return SUCCESS;
 		if (tokens[*i] == "server" || tokens[*i] == "{" || tokens[*i] == ";")
 		{
 			(*i)++;
@@ -94,24 +102,32 @@ bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 		}
 		if(tokens[*i] == "listen")
 		{
+			if (!hasNextToken(tokens, *i, "listen"))
+				return FAIL;
 			if (missingField(tokens[*i + 1]))
 				return FAIL;
 			svr.setPort(tokens[*i + 1]);
 		}
 		else if(tokens[*i] == "host")
 		{
+			if (!hasNextToken(tokens, *i, "host"))
+				return FAIL;
 			if (missingField(tokens[*i + 1]))
 				return FAIL;
 			svr.setHost(tokens[*i + 1]);
 		}
 		else if(tokens[*i] == "server_name")
 		{
+			if (!hasNextToken(tokens, *i, "server_name"))
+				return FAIL;
 			if (missingField(tokens[*i + 1]))
 				return FAIL;
 			svr.setServerName(tokens[*i + 1]);	
 		}
 		else if(tokens[*i] == "client_max_body_size")
 		{
+			if (!hasNextToken(tokens, *i, "client_max_body_size"))
+				return FAIL;
 			if (missingField(tokens[*i + 1]))
 				return FAIL;
 			// Here I'm checking if the last character of the string
@@ -133,6 +149,8 @@ bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 		}
 		else if(tokens[*i] == "error_page")
 		{
+			if (!hasNextToken(tokens, *i, "error_page") || !hasNextToken(tokens, *i + 1, "error_page"))
+				return FAIL;
 			if (missingField(tokens[*i + 1]) || missingField(tokens[*i + 2]))
 				return FAIL;
 			else if (tokens[*i + 1] != "404")
@@ -144,22 +162,32 @@ bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 		}
 		else if(tokens[*i] == "root")
 		{
+			if (!hasNextToken(tokens, *i, "root"))
+				return FAIL;
 			if (missingField(tokens[*i + 1]))
 				return FAIL;
 			svr.setRoot(tokens[*i + 1]);
 		}
 		else if(tokens[*i] == "index")
 		{
+			if (!hasNextToken(tokens, *i, "index"))
+				return FAIL;
 			if (missingField(tokens[*i + 1]))
 				return FAIL;
 			svr.setIndex(tokens[*i + 1]);
 		}
-		/*
 		else if(tokens[*i] == "location")
 		{
-			parseLocation(svr, tokens, i);
+			if (!hasNextToken(tokens, *i, "location"))
+				return FAIL;
+			if (missingField(tokens[*i + 1]))
+				return FAIL;
+			if(!parseLocation(svr, tokens, i))
+			{
+				std::cerr << "[Error]: There was an error getting the locations settings from the server." << std::endl;
+				return FAIL;
+			}
 		}
-		*/
 		(*i)++;
 	}
 	return SUCCESS;
@@ -176,9 +204,116 @@ bool missingField(std::string token)
 		return FAIL;
 }
 
-/*
-void parseLocation(Server svr, const std::vector<std::string> &tokens, size_t *i)
+
+bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 {
-	
+	Location location;
+	if (*i + 2 >= tokens.size())
+	{
+		std::cerr << "[Error]: Invalid location block." << std::endl;
+		return FAIL;
+	}
+
+	location.setPath(tokens[++(*i)]);
+	if(tokens[++(*i)] == "{")
+	{
+		while(*i < tokens.size() && tokens[*i] != "}")
+		{
+			if(tokens[*i] == "allowed_methods" || tokens[*i] == "allow_methods")
+			{
+				(*i)++;
+				if (missingField(tokens[*i]))
+					return FAIL;
+				
+				std::vector<std::string> methods;
+
+				while(*i < tokens.size() && tokens[*i] != ";")
+				{
+					if(tokens[*i] == "GET")
+						methods.push_back("GET");
+					else if(tokens[*i] == "POST")
+						methods.push_back("POST");
+					else if(tokens[*i] == "DELETE")
+						methods.push_back("DELETE");
+					else
+						return FAIL;
+					(*i)++;
+				}
+				if (*i >= tokens.size() || methods.empty())
+					return FAIL;
+				location.setAllowedMethods(methods);
+			}
+			else if(tokens[*i] == "autoindex")
+			{
+				if (!hasNextToken(tokens, *i, "autoindex"))
+					return FAIL;
+				if (missingField(tokens[++(*i)]))
+					return FAIL;
+				else if (tokens[*i] == "ON" || tokens[*i] == "on")
+					location.setAutoindex(true);
+				else if (tokens[*i] == "OFF" || tokens[*i] == "off")
+					location.setAutoindex(false);
+				else
+					return FAIL;
+			}
+			else if(tokens[*i] == "root")
+			{
+				if (!hasNextToken(tokens, *i, "root"))
+					return FAIL;
+				if (missingField(tokens[++(*i)]))
+					return FAIL;
+				location.setRoot(tokens[*i]);
+			}
+			else if(tokens[*i] == "upload")
+			{
+				if (!hasNextToken(tokens, *i, "upload"))
+					return FAIL;
+				if (missingField(tokens[++(*i)]))
+					return FAIL;
+				location.setUpload(tokens[*i]);
+			}
+			else if(tokens[*i] == "return")
+			{
+				if (!hasNextToken(tokens, *i, "return") || !hasNextToken(tokens, *i + 1, "return"))
+					return FAIL;
+				if (missingField(tokens[++(*i)]))
+					return FAIL;
+				location.setReturnCode(std::atoi(tokens[(*i)++].c_str()));
+				if (!(location.getReturnCode()))
+					return FAIL;
+				location.setReturnPath(tokens[(*i)++]);
+			}
+			else if(tokens[*i] == "client_max_body_size")
+			{
+				if (!hasNextToken(tokens, *i, "client_max_body_size"))
+					return FAIL;
+				if (missingField(tokens[++(*i)]))
+					return FAIL;
+				location.setMaxBody(tokens[(*i)]);
+			}
+			else if(tokens[*i] == "cgi_ext")
+			{
+				if (!hasNextToken(tokens, *i, "cgi_ext"))
+					return FAIL;
+				if (missingField(tokens[++(*i)]))
+					return FAIL;
+				location.setCgiExt(tokens[(*i)]);
+			}
+			else if(tokens[*i] == "cgi_path")
+			{
+				if (!hasNextToken(tokens, *i, "cgi_path"))
+					return FAIL;
+				if (missingField(tokens[++(*i)]))
+					return FAIL;
+				location.setCgiPath(tokens[(*i)]);
+			}
+			(*i)++;
+		}
+	}
+	else
+	{
+		return FAIL;
+	}
+	svr.setLocation(location);
+	return SUCCESS;
 }
-*/

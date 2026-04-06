@@ -18,6 +18,7 @@
 
 /* Classes */
 #include "Server.hpp"
+#include "Location.hpp"
 
 /* From FileCheck.cpp */
 bool fileNotEmpty(const std::string &filePath);
@@ -28,7 +29,7 @@ bool checkConfigFile(const std::string &filePath);
 std::vector<std::string> getTokens(const std::string &filePath);
 std::vector<Server> parseTokens(const std::vector<std::string> &tokens);
 bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i);
-void parseLocation(Server svr, const std::vector<std::string> &tokens, size_t *i);
+bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *i);
 bool missingField(std::string token);
 
 #endif
