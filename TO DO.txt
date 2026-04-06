@@ -271,7 +271,11 @@ the file and can be opened, if the file exits and if it has content inside.
 
 3. We have to make sure that the IP and port from the congfiguration file is valid.
 
-4. For this we have to create a class which uses vectors to properly store the location
-part of the server configuration.
+4. We have created the class Location and also added a new member to the class Server, which
+is a vector of Locations, where each one has it's own properties to parse every location
+setting from the configuration file.
 
---> TO DO: Check line 124 from Parse.cpp, we also must parse correctly 'client_max_body_size'.
+--> TO DO: Check that for every server from the configuration file is parsed correctly its
+location configurations. Also validate that the IP, ports, paths ... are valid or at least
+we must create a "validator" function that checks that every setting from the configuration
+file is correct.
