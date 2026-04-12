@@ -9,6 +9,7 @@ SRCS					= src/main.cpp\
 						  src/Location.cpp\
 						  utils/FileCheck.cpp\
 						  utils/Parse.cpp\
+						  utils/CheckConfig.cpp\
 
 OBJS					= ${SRCS:.cpp=.o}
 

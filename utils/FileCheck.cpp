@@ -28,7 +28,7 @@ bool fileExtension(const std::string& filePath, std::string ext)
 	return true;
 }
 
-bool checkConfigFile(const std::string& filePath)
+bool checkFile(const std::string& filePath)
 {
 	if(!fileNotEmpty(filePath))
 		return false;

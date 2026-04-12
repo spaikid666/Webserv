@@ -2,7 +2,7 @@
 
 static bool hasNextToken(const std::vector<std::string> &tokens, size_t i, const std::string &field)
 {
-	if (i + 1 >= tokens.size())
+	if (i + 1 >= tokens.size() || tokens[i + 1] == ";")
 	{
 		std::cerr << "[Error]: Missing value for '" << field << "'." << std::endl;
 		return FAIL;
@@ -10,7 +10,18 @@ static bool hasNextToken(const std::vector<std::string> &tokens, size_t i, const
 	return SUCCESS;
 }
 
-std::vector<std::string> getTokens(const std::string& filePath)
+static bool validPort(const std::string &port)
+{
+	if (std::atoi(port.c_str()) >= 8000 && std::atoi(port.c_str()) <= 9000)
+		return SUCCESS;
+	else
+	{
+		std::cerr << "[Error]: The listening port of the server must be between 8000 - 9000." << std::endl;
+		return FAIL;
+	}
+}
+
+std::vector<std::string> getTokens(const std::string &filePath)
 {
 	std::vector<std::string> tokens;
 	std::string line;
@@ -91,7 +102,7 @@ std::vector<Server> parseTokens(const std::vector<std::string> &tokens)
 	return servers;
 }
 
-bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
+static bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 {
 	while(*i < tokens.size() && tokens[*i] != "}")
 	{
@@ -104,15 +115,15 @@ bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 		{
 			if (!hasNextToken(tokens, *i, "listen"))
 				return FAIL;
-			if (missingField(tokens[*i + 1]))
+			(*i)++;
+			if (validPort(tokens[*i]))
+				svr.setPort(tokens[*i]);
+			else
 				return FAIL;
-			svr.setPort(tokens[*i + 1]);
 		}
 		else if(tokens[*i] == "host")
 		{
 			if (!hasNextToken(tokens, *i, "host"))
-				return FAIL;
-			if (missingField(tokens[*i + 1]))
 				return FAIL;
 			svr.setHost(tokens[*i + 1]);
 		}
@@ -120,15 +131,11 @@ bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 		{
 			if (!hasNextToken(tokens, *i, "server_name"))
 				return FAIL;
-			if (missingField(tokens[*i + 1]))
-				return FAIL;
 			svr.setServerName(tokens[*i + 1]);	
 		}
 		else if(tokens[*i] == "client_max_body_size")
 		{
 			if (!hasNextToken(tokens, *i, "client_max_body_size"))
-				return FAIL;
-			if (missingField(tokens[*i + 1]))
 				return FAIL;
 			// Here I'm checking if the last character of the string
 			// that stores the client_max_body_size has a 'M' at the end or not
@@ -151,8 +158,6 @@ bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 		{
 			if (!hasNextToken(tokens, *i, "error_page") || !hasNextToken(tokens, *i + 1, "error_page"))
 				return FAIL;
-			if (missingField(tokens[*i + 1]) || missingField(tokens[*i + 2]))
-				return FAIL;
 			else if (tokens[*i + 1] != "404")
 			{
 				std::cerr << "[Error]: The Error Page Code is invalid, it must be '404'." << std::endl;
@@ -164,23 +169,17 @@ bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 		{
 			if (!hasNextToken(tokens, *i, "root"))
 				return FAIL;
-			if (missingField(tokens[*i + 1]))
-				return FAIL;
 			svr.setRoot(tokens[*i + 1]);
 		}
 		else if(tokens[*i] == "index")
 		{
 			if (!hasNextToken(tokens, *i, "index"))
 				return FAIL;
-			if (missingField(tokens[*i + 1]))
-				return FAIL;
 			svr.setIndex(tokens[*i + 1]);
 		}
 		else if(tokens[*i] == "location")
 		{
 			if (!hasNextToken(tokens, *i, "location"))
-				return FAIL;
-			if (missingField(tokens[*i + 1]))
 				return FAIL;
 			if(!parseLocation(svr, tokens, i))
 			{
@@ -193,19 +192,7 @@ bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 	return SUCCESS;
 }
 
-bool missingField(std::string token)
-{
-	if(token == ";")
-	{
-		std::cerr << "[Error]: There is a missing field in the configuration file." << std::endl;
-		return SUCCESS;
-	}
-	else
-		return FAIL;
-}
-
-
-bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *i)
+static bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 {
 	Location location;
 	if (*i + 2 >= tokens.size())
@@ -213,7 +200,6 @@ bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *
 		std::cerr << "[Error]: Invalid location block." << std::endl;
 		return FAIL;
 	}
-
 	location.setPath(tokens[++(*i)]);
 	if(tokens[++(*i)] == "{")
 	{
@@ -221,12 +207,12 @@ bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *
 		{
 			if(tokens[*i] == "allowed_methods" || tokens[*i] == "allow_methods")
 			{
-				(*i)++;
-				if (missingField(tokens[*i]))
+				if (!(hasNextToken(tokens, *i, "allowed_methods")) || !(hasNextToken(tokens, *i, "allow_methods")))
 					return FAIL;
 				
 				std::vector<std::string> methods;
-
+				
+				(*i)++;
 				while(*i < tokens.size() && tokens[*i] != ";")
 				{
 					if(tokens[*i] == "GET")
@@ -247,9 +233,8 @@ bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *
 			{
 				if (!hasNextToken(tokens, *i, "autoindex"))
 					return FAIL;
-				if (missingField(tokens[++(*i)]))
-					return FAIL;
-				else if (tokens[*i] == "ON" || tokens[*i] == "on")
+				(*i)++;
+				if (tokens[*i] == "ON" || tokens[*i] == "on")
 					location.setAutoindex(true);
 				else if (tokens[*i] == "OFF" || tokens[*i] == "off")
 					location.setAutoindex(false);
@@ -260,15 +245,11 @@ bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *
 			{
 				if (!hasNextToken(tokens, *i, "root"))
 					return FAIL;
-				if (missingField(tokens[++(*i)]))
-					return FAIL;
 				location.setRoot(tokens[*i]);
 			}
 			else if(tokens[*i] == "upload")
 			{
 				if (!hasNextToken(tokens, *i, "upload"))
-					return FAIL;
-				if (missingField(tokens[++(*i)]))
 					return FAIL;
 				location.setUpload(tokens[*i]);
 			}
@@ -276,8 +257,7 @@ bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *
 			{
 				if (!hasNextToken(tokens, *i, "return") || !hasNextToken(tokens, *i + 1, "return"))
 					return FAIL;
-				if (missingField(tokens[++(*i)]))
-					return FAIL;
+				(*i)++;
 				location.setReturnCode(std::atoi(tokens[(*i)++].c_str()));
 				if (!(location.getReturnCode()))
 					return FAIL;
@@ -287,23 +267,17 @@ bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *
 			{
 				if (!hasNextToken(tokens, *i, "client_max_body_size"))
 					return FAIL;
-				if (missingField(tokens[++(*i)]))
-					return FAIL;
 				location.setMaxBody(tokens[(*i)]);
 			}
 			else if(tokens[*i] == "cgi_ext")
 			{
 				if (!hasNextToken(tokens, *i, "cgi_ext"))
 					return FAIL;
-				if (missingField(tokens[++(*i)]))
-					return FAIL;
 				location.setCgiExt(tokens[(*i)]);
 			}
 			else if(tokens[*i] == "cgi_path")
 			{
 				if (!hasNextToken(tokens, *i, "cgi_path"))
-					return FAIL;
-				if (missingField(tokens[++(*i)]))
 					return FAIL;
 				location.setCgiPath(tokens[(*i)]);
 			}

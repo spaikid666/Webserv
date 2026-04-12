@@ -19,17 +19,18 @@
 /* Classes */
 #include "Server.hpp"
 #include "Location.hpp"
+#include "Socket.hpp"
 
 /* From FileCheck.cpp */
 bool fileNotEmpty(const std::string &filePath);
 bool fileExtension(const std::string &filePath, std::string ext);
-bool checkConfigFile(const std::string &filePath);
+bool checkFile(const std::string &filePath);
 
 /* From Parse.cpp */
 std::vector<std::string> getTokens(const std::string &filePath);
 std::vector<Server> parseTokens(const std::vector<std::string> &tokens);
-bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i);
-bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *i);
-bool missingField(std::string token);
+
+/* From SocketConfig.cpp */
+bool createSockets(const std::vector<Server> &servers);
 
 #endif

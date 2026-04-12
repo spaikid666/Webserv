@@ -279,3 +279,5 @@ setting from the configuration file.
 location configurations. Also validate that the IP, ports, paths ... are valid or at least
 we must create a "validator" function that checks that every setting from the configuration
 file is correct.
+
+--> TO DO: 
