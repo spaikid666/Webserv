@@ -4,7 +4,7 @@ static bool hasNextToken(const std::vector<std::string> &tokens, size_t i, const
 {
 	if (i + 1 >= tokens.size() || tokens[i + 1] == ";")
 	{
-		std::cerr << "[Error]: Missing value for '" << field << "'." << std::endl;
+		std::cerr << "[ERROR]: Missing value for '" << field << "'." << std::endl;
 		return FAIL;
 	}
 	return SUCCESS;
@@ -16,7 +16,7 @@ static bool validPort(const std::string &port)
 		return SUCCESS;
 	else
 	{
-		std::cerr << "[Error]: The listening port of the server must be between 8000 - 9000." << std::endl;
+		std::cerr << "[ERROR]: The listening port of the server must be between 8000 - 9000." << std::endl;
 		return FAIL;
 	}
 }
@@ -29,7 +29,7 @@ std::vector<std::string> getTokens(const std::string &filePath)
 
 	if(!configFile.is_open())
 	{
-		std::cerr << "[Error]: The configuration file can't be opened." << std::endl;
+		std::cerr << "[ERROR]: The configuration file can't be opened." << std::endl;
 		return std::vector<std::string>();
 	}
 
@@ -76,128 +76,12 @@ std::vector<std::string> getTokens(const std::string &filePath)
 	return tokens;
 }
 
-std::vector<Server> parseTokens(const std::vector<std::string> &tokens)
-{
-	std::vector<Server> servers;
-
-	for(size_t i = 0; i < tokens.size(); ++i)
-	{
-		if(tokens[i] == "server")
-		{
-			Server svr;
-			if(!parseServer(svr, tokens, &i))
-				return std::vector<Server>();
-			servers.push_back(svr);
-		}
-		/*
-		else if(tokens[i] == "#")
-		{
-			// For the moment I set if a token is '#' just return
-			// an error because comments are not supported for the parsing
-			std::cerr << "[Error]: Please delete the comments from the configuration file." << std::endl;
-			return std::vector<Server>();
-		}
-		*/
-	}
-	return servers;
-}
-
-static bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
-{
-	while(*i < tokens.size() && tokens[*i] != "}")
-	{
-		if (tokens[*i] == "server" || tokens[*i] == "{" || tokens[*i] == ";")
-		{
-			(*i)++;
-			continue;
-		}
-		if(tokens[*i] == "listen")
-		{
-			if (!hasNextToken(tokens, *i, "listen"))
-				return FAIL;
-			(*i)++;
-			if (validPort(tokens[*i]))
-				svr.setPort(tokens[*i]);
-			else
-				return FAIL;
-		}
-		else if(tokens[*i] == "host")
-		{
-			if (!hasNextToken(tokens, *i, "host"))
-				return FAIL;
-			svr.setHost(tokens[*i + 1]);
-		}
-		else if(tokens[*i] == "server_name")
-		{
-			if (!hasNextToken(tokens, *i, "server_name"))
-				return FAIL;
-			svr.setServerName(tokens[*i + 1]);	
-		}
-		else if(tokens[*i] == "client_max_body_size")
-		{
-			if (!hasNextToken(tokens, *i, "client_max_body_size"))
-				return FAIL;
-			// Here I'm checking if the last character of the string
-			// that stores the client_max_body_size has a 'M' at the end or not
-			if(tokens[*i + 1][tokens[*i + 1].size() - 1] != 'M')
-			{
-				std::cout << tokens[*i + 1][tokens[*i + 1].size() - 1] << std::endl;
-				// Here I'm checking if it doesn't have a 'M' at the end,
-				// I want to make sure that the value inserted is a valid digit.
-				// ****** TO DO: Correct the parsing, when it's only 'M' the paramether for 'client_max_body_size' is valid and the program doesn't give a shit.
-				if(!std::strtol(tokens[*i + 1].c_str(), NULL, 10))
-				{
-					std::cerr << "[Error]: There value provided for the paramether 'client_max_body_size' is not valid." << std::endl;
-					std::cout << tokens[*i + 1] << std::endl;
-					return FAIL;
-				}
-			}
-			svr.setMaxBody(tokens[*i + 1]);
-		}
-		else if(tokens[*i] == "error_page")
-		{
-			if (!hasNextToken(tokens, *i, "error_page") || !hasNextToken(tokens, *i + 1, "error_page"))
-				return FAIL;
-			else if (tokens[*i + 1] != "404")
-			{
-				std::cerr << "[Error]: The Error Page Code is invalid, it must be '404'." << std::endl;
-				return FAIL;
-			}
-			svr.setErrorPage(tokens[*i + 2]);
-		}
-		else if(tokens[*i] == "root")
-		{
-			if (!hasNextToken(tokens, *i, "root"))
-				return FAIL;
-			svr.setRoot(tokens[*i + 1]);
-		}
-		else if(tokens[*i] == "index")
-		{
-			if (!hasNextToken(tokens, *i, "index"))
-				return FAIL;
-			svr.setIndex(tokens[*i + 1]);
-		}
-		else if(tokens[*i] == "location")
-		{
-			if (!hasNextToken(tokens, *i, "location"))
-				return FAIL;
-			if(!parseLocation(svr, tokens, i))
-			{
-				std::cerr << "[Error]: There was an error getting the locations settings from the server." << std::endl;
-				return FAIL;
-			}
-		}
-		(*i)++;
-	}
-	return SUCCESS;
-}
-
 static bool parseLocation(Server &svr, const std::vector<std::string> &tokens, size_t *i)
 {
 	Location location;
 	if (*i + 2 >= tokens.size())
 	{
-		std::cerr << "[Error]: Invalid location block." << std::endl;
+		std::cerr << "[ERROR]: Invalid location block." << std::endl;
 		return FAIL;
 	}
 	location.setPath(tokens[++(*i)]);
@@ -290,4 +174,120 @@ static bool parseLocation(Server &svr, const std::vector<std::string> &tokens, s
 	}
 	svr.setLocation(location);
 	return SUCCESS;
+}
+
+static bool parseServer(Server &svr, const std::vector<std::string> &tokens, size_t *i)
+{
+	while(*i < tokens.size() && tokens[*i] != "}")
+	{
+		if (tokens[*i] == "server" || tokens[*i] == "{" || tokens[*i] == ";")
+		{
+			(*i)++;
+			continue;
+		}
+		if(tokens[*i] == "listen")
+		{
+			if (!hasNextToken(tokens, *i, "listen"))
+				return FAIL;
+			(*i)++;
+			if (validPort(tokens[*i]))
+				svr.setPort(tokens[*i]);
+			else
+				return FAIL;
+		}
+		else if(tokens[*i] == "host")
+		{
+			if (!hasNextToken(tokens, *i, "host"))
+				return FAIL;
+			svr.setHost(tokens[*i + 1]);
+		}
+		else if(tokens[*i] == "server_name")
+		{
+			if (!hasNextToken(tokens, *i, "server_name"))
+				return FAIL;
+			svr.setServerName(tokens[*i + 1]);	
+		}
+		else if(tokens[*i] == "client_max_body_size")
+		{
+			if (!hasNextToken(tokens, *i, "client_max_body_size"))
+				return FAIL;
+			// Here I'm checking if the last character of the string
+			// that stores the client_max_body_size has a 'M' at the end or not
+			if(tokens[*i + 1][tokens[*i + 1].size() - 1] != 'M')
+			{
+				std::cout << tokens[*i + 1][tokens[*i + 1].size() - 1] << std::endl;
+				// Here I'm checking if it doesn't have a 'M' at the end,
+				// I want to make sure that the value inserted is a valid digit.
+				// ****** TO DO: Correct the parsing, when it's only 'M' the paramether for 'client_max_body_size' is valid and the program doesn't give a shit.
+				if(!std::strtol(tokens[*i + 1].c_str(), NULL, 10))
+				{
+					std::cerr << "[ERROR]: There value provided for the paramether 'client_max_body_size' is not valid." << std::endl;
+					std::cout << tokens[*i + 1] << std::endl;
+					return FAIL;
+				}
+			}
+			svr.setMaxBody(tokens[*i + 1]);
+		}
+		else if(tokens[*i] == "error_page")
+		{
+			if (!hasNextToken(tokens, *i, "error_page") || !hasNextToken(tokens, *i + 1, "error_page"))
+				return FAIL;
+			else if (tokens[*i + 1] != "404")
+			{
+				std::cerr << "[ERROR]: The Error Page Code is invalid, it must be '404'." << std::endl;
+				return FAIL;
+			}
+			svr.setErrorPage(tokens[*i + 2]);
+		}
+		else if(tokens[*i] == "root")
+		{
+			if (!hasNextToken(tokens, *i, "root"))
+				return FAIL;
+			svr.setRoot(tokens[*i + 1]);
+		}
+		else if(tokens[*i] == "index")
+		{
+			if (!hasNextToken(tokens, *i, "index"))
+				return FAIL;
+			svr.setIndex(tokens[*i + 1]);
+		}
+		else if(tokens[*i] == "location")
+		{
+			if (!hasNextToken(tokens, *i, "location"))
+				return FAIL;
+			if(!parseLocation(svr, tokens, i))
+			{
+				std::cerr << "[ERROR]: There was an error getting the locations settings from the server." << std::endl;
+				return FAIL;
+			}
+		}
+		(*i)++;
+	}
+	return SUCCESS;
+}
+
+std::vector<Server> parseTokens(const std::vector<std::string> &tokens)
+{
+	std::vector<Server> servers;
+
+	for(size_t i = 0; i < tokens.size(); ++i)
+	{
+		if(tokens[i] == "server")
+		{
+			Server svr;
+			if(!parseServer(svr, tokens, &i))
+				return std::vector<Server>();
+			servers.push_back(svr);
+		}
+		/*
+		else if(tokens[i] == "#")
+		{
+			// For the moment I set if a token is '#' just return
+			// an error because comments are not supported for the parsing
+			std::cerr << "[Error]: Please delete the comments from the configuration file." << std::endl;
+			return std::vector<Server>();
+		}
+		*/
+	}
+	return servers;
 }

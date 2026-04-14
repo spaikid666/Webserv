@@ -5,11 +5,13 @@ C++						= c++ -std=c++98
 STD_FLAGS 				= -Wall -Wextra -Werror
 
 SRCS					= src/main.cpp\
-                          src/Server.cpp\
 						  src/Location.cpp\
+                          src/Server.cpp\
+						  src/Socket.cpp\
 						  utils/FileCheck.cpp\
 						  utils/Parse.cpp\
-						  utils/CheckConfig.cpp\
+						  utils/SocketConfig.cpp\
+						  
 
 OBJS					= ${SRCS:.cpp=.o}
 

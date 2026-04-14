@@ -11,10 +11,13 @@
 #include <fstream>
 #include <string>
 #include <cstdlib>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 
 /* Custom Macros */
 #define FAIL false
 #define SUCCESS true
+#define BAD_IP 0xFFFFFFFF
 
 /* Classes */
 #include "Server.hpp"
@@ -31,6 +34,6 @@ std::vector<std::string> getTokens(const std::string &filePath);
 std::vector<Server> parseTokens(const std::vector<std::string> &tokens);
 
 /* From SocketConfig.cpp */
-bool createSockets(const std::vector<Server> &servers);
+bool createSockets(const std::vector<Server> &servers, std::vector<Socket> &sockets);
 
 #endif

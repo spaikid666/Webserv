@@ -4,7 +4,7 @@ int main(int argc, char** argv)
 {
 	if (argc != 2)
 	{
-		std::cerr << "[Error]: Number of arguments invalid. Try: ./webserv [configuration file]" << std::endl;
+		std::cerr << "[ERROR]: Number of arguments invalid. Try: ./webserv [configuration file]" << std::endl;
 		return 1;
 	}
 
@@ -31,12 +31,13 @@ int main(int argc, char** argv)
 	std::cout << locations[0].getMaxBody() << std::endl;
 	*/
 
-	if(!(createSockets(servers)))
+	std::vector<Socket> sockets;
+
+	if(!(createSockets(servers, sockets)))
 	{
-		std::cerr << "[Error]: The server's configuration is invalid." << std::endl;
+		std::cerr << "[ERROR]: The server's configuration is invalid." << std::endl;
 		return 1;
 	}
-
 
 
 

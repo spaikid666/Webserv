@@ -5,13 +5,13 @@ bool fileNotEmpty(const std::string& filePath)
 	int fd = open(filePath.c_str(), 0);
 	if(fd < 0)
 	{
-		std::cerr << "[Error]: '" << filePath << "' doesn't exist or is not accessible." << std::endl;
+		std::cerr << "[ERROR]: '" << filePath << "' doesn't exist or is not accessible." << std::endl;
 		return false;
 	}
 	char c;
 	if(!read(fd, &c, 1))
 	{
-		std::cerr << "[Error]: The file '" << filePath << "' is empty." << std::endl;
+		std::cerr << "[ERROR]: The file '" << filePath << "' is empty." << std::endl;
 		return false;
 	}
 	close(fd);
@@ -22,7 +22,7 @@ bool fileExtension(const std::string& filePath, std::string ext)
 {
 	if (filePath.size() < 5 || filePath.substr(filePath.size() - 5) != ext)
 	{
-		std::cerr << "[Error]: The extension '" << ext << "' from '" << filePath << "' is not supported, try '.conf'." << std::endl;
+		std::cerr << "[ERROR]: The extension '" << ext << "' from '" << filePath << "' is not supported, try '.conf'." << std::endl;
 		return false;
 	}
 	return true;
