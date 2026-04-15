@@ -5,11 +5,14 @@ C++						= c++ -std=c++98
 STD_FLAGS 				= -Wall -Wextra -Werror
 
 SRCS					= src/main.cpp\
+						  src/Client.cpp\
 						  src/Location.cpp\
                           src/Server.cpp\
+						  src/ServerManager.cpp\
 						  src/Socket.cpp\
 						  utils/FileCheck.cpp\
 						  utils/Parse.cpp\
+						  utils/ServerLoop.cpp\
 						  utils/SocketConfig.cpp\
 						  
 

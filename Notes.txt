@@ -91,3 +91,17 @@ settings to make the server run, whereas the 'extended' one has all the configur
 
 
 
+
+
+We are going to use poll() instead of epoll() (only available on Linux) or kqueue() (only available on macOS),
+the thing is that poll() is less efficient than the new options, the good this is that we can have 2 different
+codes depending of the OS of the PC that is executing the code using:
+#ifdef __linux__
+    // Write epoll() code here
+#elif __APPLE__
+    // Write kqueue() code here
+#endif
+
+The bad thing happening at chosing that option is that we have to make two versions of the same code and test it.
+
+

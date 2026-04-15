@@ -13,6 +13,10 @@
 #include <cstdlib>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
+#include <cstring>
+#include <poll.h>
+#include <map>
 
 /* Custom Macros */
 #define FAIL false
@@ -23,6 +27,8 @@
 #include "Server.hpp"
 #include "Location.hpp"
 #include "Socket.hpp"
+#include "Client.hpp"
+#include "ServerManager.hpp"
 
 /* From FileCheck.cpp */
 bool fileNotEmpty(const std::string &filePath);
@@ -32,6 +38,9 @@ bool checkFile(const std::string &filePath);
 /* From Parse.cpp */
 std::vector<std::string> getTokens(const std::string &filePath);
 std::vector<Server> parseTokens(const std::vector<std::string> &tokens);
+
+/* From ServerLoop.cpp */
+bool serverLoop(ServerManager svrMan);
 
 /* From SocketConfig.cpp */
 bool createSockets(const std::vector<Server> &servers, std::vector<Socket> &sockets);

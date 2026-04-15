@@ -6,16 +6,16 @@ bool fileNotEmpty(const std::string& filePath)
 	if(fd < 0)
 	{
 		std::cerr << "[ERROR]: '" << filePath << "' doesn't exist or is not accessible." << std::endl;
-		return false;
+		return FAIL;
 	}
 	char c;
 	if(!read(fd, &c, 1))
 	{
 		std::cerr << "[ERROR]: The file '" << filePath << "' is empty." << std::endl;
-		return false;
+		return FAIL;
 	}
 	close(fd);
-	return true;
+	return SUCCESS;
 }
 
 bool fileExtension(const std::string& filePath, std::string ext)
@@ -23,16 +23,16 @@ bool fileExtension(const std::string& filePath, std::string ext)
 	if (filePath.size() < 5 || filePath.substr(filePath.size() - 5) != ext)
 	{
 		std::cerr << "[ERROR]: The extension '" << ext << "' from '" << filePath << "' is not supported, try '.conf'." << std::endl;
-		return false;
+		return FAIL;
 	}
-	return true;
+	return SUCCESS;
 }
 
 bool checkFile(const std::string& filePath)
 {
 	if(!fileNotEmpty(filePath))
-		return false;
+		return FAIL;
 	if(!fileExtension(filePath, ".conf"))
-		return false;
-	return true;
+		return FAIL;
+	return SUCCESS;
 }
