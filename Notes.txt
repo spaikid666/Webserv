@@ -8,16 +8,54 @@ Compilation:
 Ex:
 ./webserv ./config/extended.conf
 
+### Explanation of the main workflow ###
+- main.cpp:
+	At the beginning we check that the program takes only 2 arguments (the name of the program itselve and the
+	path of the configuration file).
 
-At the beginning we check that the program takes only 2 arguments (the name of the program itselve and the
-path of the configuration file).
+	Then we create svrMan, which its type is ServerManager, this class is in charge of handling all the data
+	neede to execute and manage the server functionalities.
 
-We check that the configuration file exist, can be opened and has content inside.
+	We then call it's member function .setUpServers() to obviously, set up the servers from the config file,
+	if the returned value is 0 (in our code 0 means FAIL (we have a macro for that)) it means the function
+	failed so the program returns 1
 
-Then we create a vector of strings which is passed to getTokens, a functions that gets
-rid of of all the spaces and creates individual tokens for each word or symbol surround by spaces.
+- ServerManager.cpp:
+	[line 93] We execute .setUpServers(), this function do 2 things, it parse first the configuration file
+	and returns an empty vector if it fails. Then create the sockets for each server, returning again an empty
+	vector if it fails.
 
-Then we parse every token and place them in the correct place inside the paramethers that the server can have.
+	Let's see what parseServers() does first:
+
+	[line 56] it first call the function checkFile() which it calls fileNotEmpty() and fileExtension(), those
+	functions are in charge of: first, checking if the config file exist and it's accessible and if it's empty or not,
+	the other function checks that the file extension it's the right one (.conf).
+
+	Then it creates a vector of strings which would contain all the tokes from the config file using the function getTokens():
+
+- Parse.cpp:
+
+	[line 24] it creates the vector of tokes that would be the output of the function, then creates line that would be each line
+	parsed and creates configFile with std::ifstream. So configFile is just the link between our program and the content of the
+	file passed, it doesn't store anything in memory.
+
+	Then in the while loop we iterate through the content of the configFile using line as an expandable string managing
+	memory allocation automatically. Then inside each iteration we go char by char inserting one by one inside the variable tmp
+	which is an auxiliary variable that storages each word inside the line, as soon as it gets an space or a symbol {, } or ;
+	it pushes the word inside the token vector. This happens until EOF or until getting an error
+
+
+- ServerManager.cpp:
+	[line 70] Once the config file it's validated, it calls parseTokens() with a vector of Server classes which would be the one
+	that would have all the servers	configuration inside our ServerManager class.
+
+- Parse.cpp
+	[line 269] It iterates through the tokens until the word 'server' is found. Then it call parseServer() and when it finishes
+	it push the server into the Server vector.
+
+	[line 179] 
+
+
 
 
 
