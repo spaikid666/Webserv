@@ -74,7 +74,11 @@ bool createSockets(const std::vector<Server> &servers, std::vector<Socket> &sock
 	size_t i = 0;
 	int fd;
 
-	parseSockets(servers, sockets);
+	if(!parseSockets(servers, sockets))
+	{
+		std::cerr << "[ERROR]: Error creating parsing the sockets." << std::endl;
+		return FAIL;
+	}
 	while (i < sockets.size())
 	{
 		fd = socket(AF_INET, SOCK_STREAM, 0);

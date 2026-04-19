@@ -131,6 +131,174 @@ settings to make the server run, whereas the 'extended' one has all the configur
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+What does inet_addr() and htons()?
+- inet_addr(): We use this function to convert char * C strings into in_addr_t, that's why we casted the
+               std::string into .c() first. We use the in_addr_t format for sending packets with TCP/IP
+			   through internet, because the router doesn't have time to check the size of each packet,
+			   we use this format as an standard, a 32-bit unsigned integer. This function also transform
+			   the bits into big endian (the larger bits for binaries are at the beginning, while Macs and
+			   Linux often use little endian, where the smaller bits in binary notation are at the beginning)
+			   so it makes sure that the bits are arranged for universal understanding across machines.
+
+- htons(): This function does something similar to inet_addr(), it swaps the bytes into Network Byte order
+           to make an standard across machines and make possible the communication. That's why in the project
+		   we transform the std::string for the port into .c() and then make std::atoi(), we are already
+		   passing to the function an unsigned 16-bits int as argument.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Sockets in C:
+- why using?: socket(AF_INET, SOCK_STREAM, 0);
+	- AF_INET: It just tells the "socket family" to use, which means which protocol use for the socket, which
+	           also means chosing between IPv4 or IPv6. With AF_INET we are telling to use IPv4, with AF_INET6
+			   we are telling to use IPv6 socket family.
+
+	- SOCK_STREAM: With this we are telling the OS that we want a TCP connection. Which means that we want a
+	               bidirectional stream of communication (or data interchange). Another alternative is using
+				   SOCK_DGRAM for UDP protocol, but this protocol doesn't validates that all the packets are
+				   recieve and it's not reliable for a webpage but it is for a multiplayer game.
+	
+	- 0: This tells the OS tho chose the default protocol, so as we said to use AF_INET and SOCK_STREAM, the OS
+	     would know that we are talking about TCP Protocol under the hood.
+
+
+
+
+
+- what the socket must do or what are the socket's configuration? -> setsockopt(sockets[*i].getSocketFD(), SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt))
+	- sockets[*i].getSocketFD(): the first argument is for passing the FD of the socket.
+
+	- SOL_SOCKET: 
+
+	- SO_REUSEADDR:
+
+
+
+
+
+- how to make the sockets non-blocking as the subject says? -> We use fcntl(sockets[i].getSocketFD(), F_SETFL, O_NONBLOCK):
+	- fcntl(): As everything in Linux is a file, we use this function from C in the User Space to make the Kernel
+	           (in the Kernel Space) do things (like setting special properties) to a specific file.
+
+		- sockets[i].getSocketFD(): Is the first argument, this only is for telling the function which File Descriptor to use
+
+		- F_SETFL: This argument means "Set File Flags", it tells what action perform to the File Descriptor specified in the last argument,
+		           with this specific argument, we are overwriting the status flag of the FD.
+
+		- O_NONBLOCK: This is the argument for setting the new flag that we want for the FD. With this flag, we say:
+		              "If a read/write operation on this socket would cause the program to pause and wait,
+					  return an error instantly instead of waiting."
+
+
+
+
+
+- how to make possible for the user to reach the server using the browser -> bind(sockets[*i].getSocketFD(), (struct sockaddr *)&addr, sizeof(addr)):
+	- bind(): We link the socket file descriptor to an IP and port to be reachable by the user on the internet. We pass the memory address and the
+	          size of it because bind supports different protocols, not just IPv4, it can support IPv6, UNIX sockets, Bluetooth, so
+			  every one of those protocols have different memory size in their struct. If bind tries to execute sockaddr_in6 (struct for IPv6)
+			  with size of sockaddr_in (IPv4) it would crash causing an undefined behavior.
+
+		- sockets[*i].getSocketFD(): It's the socket's file descriptor.
+
+		- (struct sockaddr *)&addr: Is the casted struct with the data from the socket, like the protocol used, the IP and port.
+
+		- sizeof(addr): Get's the size of the socket address
+
+
+
+
+
+- how to make the socket able to recieve a connection? -> listen(sockets[*i].getSocketFD(), SOMAXCONN)
+	- listen(): By default sockets by the OS is assumend that they are going to be used to be connected to something,
+	            not the other way around, and that's what we want. To have a passive socket that recieves "connection petitions".
+
+		-  sockets[*i].getSocketFD(): First argument to tell which is the socket's FD.
+
+		- SOMAXCONN: This stands for Socket Maximun Connections, telling the program to make the socket able to handle the maximun
+		             number of connections that the OS can handle.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Main loop event of the server -> initServer():
+A real server doesn't goes one by one of the client's FD checking if there is something new requested by them, that
+would be extremely costly for the CPU, spyking it's performance to 100%. Instead of that we use another aproach, we
+wait until getting a new update from one of the FDs. That's what poll() is in charge for.
+
+In reality, poll() is a multiplexer, specifically, the multiplexer that we are going to use because is compatible with Linux and Mac.
+
+Multiplexers are a System Call Routine (different from Kernel Objects like sockets or pipes), which are a set of instructions inside
+the CPU in priviledge ring 0, which means that they are managed by the Kernel.
+
+We create a pollfd for each socket, there are X servers and each server has a socket, so we create at first X ammount of pollfd
+
+Then we execute poll(&this->_pollFDs[0], this->_pollFDs.size(), -1):
+	- &this->_pollFDs[0]: The memory address where for the array of pollfd, it points to the beginning.
+
+	- this->_pollFDs.size(): The size of the array of pollfd
+
+	- -1: Set the time to wait in miliseconds, as is set to -1 it is always waiting until POLLIN
+
+
+poll_return: Number of total new events = numbet of POLLIN got by the different 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 We are going to use poll() instead of epoll() (only available on Linux) or kqueue() (only available on macOS),
 the thing is that poll() is less efficient than the new options, the good this is that we can have 2 different
 codes depending of the OS of the PC that is executing the code using:
@@ -143,3 +311,10 @@ codes depending of the OS of the PC that is executing the code using:
 The bad thing happening at chosing that option is that we have to make two versions of the same code and test it.
 
 
+
+
+
+
+
+
+Investigate more about 3 handshake between the browser and the server.
