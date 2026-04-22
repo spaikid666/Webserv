@@ -21,10 +21,13 @@ class ServerManager
         std::vector<Server> parseServers(const char *configFile);
         std::vector<Socket> startSockets(std::vector<Socket> &sockets);
         bool setUpServers(const char *configFile);
-        void initServer();
+        bool initServer();
 
         void createPolls();
         bool isServerFD(int fd);
+		bool handleNewClient(size_t *i);
+		bool handleClientEvent(size_t *i);
+		bool deleteClient(size_t *i);
 
     private:
         std::vector<Server> _servers;

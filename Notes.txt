@@ -318,3 +318,15 @@ The bad thing happening at chosing that option is that we have to make two versi
 
 
 Investigate more about 3 handshake between the browser and the server.
+
+
+
+
+
+
+
+
+HTTP Request Part:
+In line [226] from ServerManager, we check if the request if fully storaged in the Client class checking if '\r\n\r\n' is
+inside the request. Because sometimes depending on the internet connection and other factors, the request is not fully
+received, so we must check that the request has '\r\n\r\n' before parsing the HTTP request.

@@ -13,7 +13,8 @@ int main(int argc, char** argv)
 	if(!svrMan.setUpServers(argv[1]))
 		return 1;
 
-	svrMan.initServer();
+	if (!svrMan.initServer())
+		return 1;
 
 	return 0;
 }

@@ -104,7 +104,7 @@ bool ServerManager::setUpServers(const char *configFile)
 	return SUCCESS;
 }
 
-void ServerManager::initServer()
+bool ServerManager::initServer()
 {
 	int poll_return;
 
@@ -116,7 +116,7 @@ void ServerManager::initServer()
 		if (poll_return < 0)
 		{
 			std::cerr << "[ERROR]: Error, poll() failed." << std::endl;
-			break;
+			return FAIL;
 		}
 		std::cout << "Poll woke up, number of new total events incoming: " << poll_return << std::endl;
 
@@ -126,52 +126,26 @@ void ServerManager::initServer()
 			{
 				if (this->isServerFD(this->_pollFDs[i].fd))
 				{
-					std::cout << "New client connecting" << std::endl;
-					int client_fd = accept(this->_pollFDs[i].fd, NULL, NULL);
-
-					if (client_fd < 0)
+					if (!handleNewClient(&i))
 					{
-						std::cerr << "[ERROR]: accept() failed." << std::endl;
+						std::cerr << "[ERROR]: Error creating the new client." << std::endl;
 						continue;
 					}
-
-					if (fcntl(client_fd, F_SETFL, O_NONBLOCK) < 0)
-					{
-						std::cerr << "[ERROR]: fcntl() failed on client socket." << std::endl;
-						close(client_fd);
-						continue;
-					}
-
-					struct pollfd client_poll;
-					client_poll.fd = client_fd;
-					client_poll.events = POLLIN;
-					client_poll.revents = 0;
-					this->_pollFDs.push_back(client_poll);
-
-					this->_clients[client_fd] = Client();
-
-					std::cout << "Successfully added client on FD: " << client_fd << std::endl;
 				}
-			
 				else
 				{
-					std::cout << "Client sent data" << std::endl;
-					char buffer[1024];
-					memset(buffer, 0, sizeof(buffer));
-					int bytes_read = recv(_pollFDs[i].fd, buffer, sizeof(buffer) - 1, 0);
-					if (bytes_read <= 0)
+					if (!handleClientEvent(&i))
 					{
-						std::cout << "Client " << this->_pollFDs[i].fd << " disconnected." << std::endl;
-						close(this->_pollFDs[i].fd);
-						//We will need to remove them from the vector/map later
-					}
-					if (bytes_read > 0)
-						std::cout << "Client " << _pollFDs[i].fd << " sent: " << buffer << std::endl;
+						std::cerr << "[ERROR]: There was an error inside the client's routine loop." << std::endl;
+						return FAIL;
+					}	
 				}
 			}
 		}
 
 	}
+
+	return SUCCESS;
 }
 
 void ServerManager::createPolls()
@@ -195,4 +169,82 @@ bool ServerManager::isServerFD(int fd)
 			return SUCCESS;
 	}
 	return FAIL;
+}
+
+bool ServerManager::handleNewClient(size_t *i)
+{
+	std::cout << "New client connecting" << std::endl;
+	int client_fd = accept(this->_pollFDs[*i].fd, NULL, NULL);
+
+	if (client_fd < 0)
+	{
+		std::cerr << "[ERROR]: accept() failed." << std::endl;
+		return FAIL;
+	}
+
+	if (fcntl(client_fd, F_SETFL, O_NONBLOCK) < 0)
+	{
+		std::cerr << "[ERROR]: fcntl() failed on client's socket." << std::endl;
+		close(client_fd);
+		return FAIL;
+	}
+
+	struct pollfd client_poll;
+	client_poll.fd = client_fd;
+	client_poll.events = POLLIN;
+	client_poll.revents = 0;
+	this->_pollFDs.push_back(client_poll);
+
+	this->_clients[client_fd] = Client();
+
+	std::cout << "Successfully added client on FD: " << client_fd << std::endl;
+
+	return SUCCESS;
+}
+
+bool ServerManager::handleClientEvent(size_t *i)
+{
+	std::cout << "Client sent data" << std::endl;
+	char buffer[1024];
+	memset(buffer, 0, sizeof(buffer));
+	int bytes_read = recv(_pollFDs[*i].fd, buffer, sizeof(buffer) - 1, 0);
+	if (bytes_read <= 0)
+	{
+		if (!deleteClient(i))
+			return FAIL;
+		else
+			return SUCCESS;
+	}
+	if (bytes_read > 0)
+	{
+		// This is for checking if the HTTP request if full, if not iterate again over poll until getting the full request
+		int new_request = this->_clients[_pollFDs[*i].fd].appendRequest(buffer, bytes_read);
+		if (new_request)
+		{
+			// The next 2 std::cout lines are just for debbuging, they must be deleted later
+			std::cout << "----- DEBUG LINE FOR CHECKING IF THE DATA FROM THE CLIENT IS SAVED CORRECTLY -----" << std::endl;
+			std::cout << "Client " << _pollFDs[*i].fd << " sent: " << _clients[_pollFDs[*i].fd].getClientRawRequest() << std::endl;
+			//HTTP PARSING (ULISES)
+		}
+	}
+
+	return SUCCESS;
+}
+
+bool ServerManager::deleteClient(size_t *i)
+{
+    int delete_fd = this->_pollFDs[*i].fd;
+    std::cout << "Client " << delete_fd << " disconnected." << std::endl;
+    
+    if (close(delete_fd) < 0)
+	{
+		std::cerr << "[ERROR]: Error deleting the client." << std::endl;
+		return FAIL;
+	}
+    
+    this->_clients.erase(delete_fd);
+    this->_pollFDs.erase(this->_pollFDs.begin() + *i);
+    (*i)--;
+    
+    return SUCCESS;
 }
